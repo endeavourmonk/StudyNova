@@ -1,13 +1,11 @@
 import { index, jsonb, pgTable, timestamp, uuid } from "drizzle-orm/pg-core";
 import { uuidv7 } from "uuidv7";
+import { z } from "zod";
 
 import { notesTable } from "./notes";
+import { quizQuestionSchema } from "./validation/quizzes";
 
-export type QuizQuestion = {
-  question: string;
-  options: [string, string, string, string];
-  correctAnswer: number;
-};
+export type QuizQuestion = z.infer<typeof quizQuestionSchema>;
 
 export const quizzesTable = pgTable(
   "quizzes",

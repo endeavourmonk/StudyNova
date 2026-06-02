@@ -1,4 +1,5 @@
 import { and, count, desc, eq, ilike, or, SQL } from "drizzle-orm";
+import { z } from "zod";
 
 import { db } from "../index";
 import { notesTable } from "../schemas/notes";
@@ -7,22 +8,16 @@ import {
   resolvePagination,
   toPaginatedResult,
 } from "./types";
+import {
+  createNoteSchema,
+  updateNoteSchema,
+  fetchNotesParamsSchema,
+} from "../schemas/validation/notes";
 
-export type CreateNoteInput = {
-  title: string;
-  topic: string;
-  content: string;
-  subjectId: string;
-};
-
-export type UpdateNoteInput = Partial<
-  Pick<CreateNoteInput, "title" | "topic" | "content" | "subjectId">
->;
-
-export type FetchNotesManyParams = PaginationParams & {
-  subjectId?: string;
-  search?: string;
-};
+export type CreateNoteInput = z.infer<typeof createNoteSchema>;
+export type UpdateNoteInput = z.infer<typeof updateNoteSchema>;
+export type FetchNotesManyParams = PaginationParams &
+  z.infer<typeof fetchNotesParamsSchema>;
 
 export async function fetchNotesMany(
   userId: string,

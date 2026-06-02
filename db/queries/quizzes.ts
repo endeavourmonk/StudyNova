@@ -1,24 +1,24 @@
 import { and, count, desc, eq } from "drizzle-orm";
+import { z } from "zod";
 
 import { db } from "../index";
 import { notesTable } from "../schemas/notes";
-import { quizzesTable, QuizQuestion } from "../schemas/quizzes";
+import { quizzesTable } from "../schemas/quizzes";
 import {
   PaginationParams,
   resolvePagination,
   toPaginatedResult,
 } from "./types";
+import {
+  createQuizSchema,
+  updateQuizSchema,
+  fetchQuizzesParamsSchema,
+} from "../schemas/validation/quizzes";
 
-export type CreateQuizInput = {
-  noteId: string;
-  questionsJson: QuizQuestion[];
-};
-
-export type UpdateQuizInput = Partial<Pick<CreateQuizInput, "questionsJson">>;
-
-export type FetchQuizzesManyParams = PaginationParams & {
-  noteId?: string;
-};
+export type CreateQuizInput = z.infer<typeof createQuizSchema>;
+export type UpdateQuizInput = z.infer<typeof updateQuizSchema>;
+export type FetchQuizzesManyParams = PaginationParams &
+  z.infer<typeof fetchQuizzesParamsSchema>;
 
 export async function fetchQuizzesMany(
   userId: string,

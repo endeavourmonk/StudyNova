@@ -1,4 +1,5 @@
 import { and, count, desc, eq } from "drizzle-orm";
+import { z } from "zod";
 
 import { db } from "../index";
 import { usersTable } from "../schemas/users";
@@ -7,21 +8,13 @@ import {
   resolvePagination,
   toPaginatedResult,
 } from "./types";
+import {
+  createUserSchema,
+  updateUserSchema,
+} from "../schemas/validation/users";
 
-export type CreateUserInput = {
-  clerkUserId: string;
-  username: string;
-  email: string;
-  firstName: string;
-  lastName?: string;
-};
-
-export type UpdateUserInput = Partial<
-  Pick<
-    CreateUserInput,
-    "username" | "email" | "firstName" | "lastName"
-  >
->;
+export type CreateUserInput = z.infer<typeof createUserSchema>;
+export type UpdateUserInput = z.infer<typeof updateUserSchema>;
 
 export async function fetchUsersMany(params: PaginationParams = {}) {
   const { page, pageSize, offset } = resolvePagination(params);

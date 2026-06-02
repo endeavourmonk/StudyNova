@@ -1,4 +1,5 @@
 import { and, count, desc, eq } from "drizzle-orm";
+import { z } from "zod";
 
 import { db } from "../index";
 import { subjectsTable } from "../schemas/subjects";
@@ -7,12 +8,13 @@ import {
   resolvePagination,
   toPaginatedResult,
 } from "./types";
+import {
+  createSubjectSchema,
+  updateSubjectSchema,
+} from "../schemas/validation/subjects";
 
-export type CreateSubjectInput = {
-  name: string;
-};
-
-export type UpdateSubjectInput = Partial<CreateSubjectInput>;
+export type CreateSubjectInput = z.infer<typeof createSubjectSchema>;
+export type UpdateSubjectInput = z.infer<typeof updateSubjectSchema>;
 
 export async function fetchSubjectsMany(
   userId: string,
