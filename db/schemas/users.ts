@@ -36,5 +36,3 @@ export const usersTable = pgTable("users", {
     .defaultNow()
     .$onUpdateFn(() => new Date()),
 });
-
-export const userRelations = relations(usersTable, ({ many }) => ({}));

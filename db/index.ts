@@ -3,8 +3,6 @@ import { drizzle } from "drizzle-orm/neon-http";
 
 import * as schema from "./schema";
 
-console.log("schema ---------- ", schema);
-
 const globalForDb = globalThis as unknown as {
   db: ReturnType<typeof createDb> | undefined;
 };
