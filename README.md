@@ -188,9 +188,9 @@ User ──< Subject ──< Note ──< Quiz
   └──< Note (direct ownership for auth/querying)
 ```
 
-- **Subject** — `name`, owned by one user; deleting a subject cascades to its notes.
-- **Note** — `title`, `topic`, `content` (markdown/text), tied to subject + user.
-- **Quiz** — linked to one note; `questions_json` holds MCQ structure (question, options, correct answer).
+- **Subject** - `name`, owned by one user; deleting a subject cascades to its notes.
+- **Note** - `title`, `topic`, `content` (markdown/text), tied to subject + user.
+- **Quiz** - linked to one note; `questions_json` holds MCQ structure (question, options, correct answer).
 
 Detailed field-level spec and page map live in [product.md](./product.md#database-schema).
 
@@ -223,7 +223,7 @@ Detailed field-level spec and page map live in [product.md](./product.md#databas
 - **Auth-aware** multi-tenant data (`user_id` on all user content)
 - Clear **MVP scope** and explicit out-of-scope list (see [product.md](./product.md))
 
-**Elevator pitch:** StudyNova is an EdTech-style SaaS MVP that uses AI to turn a topic into structured study notes and quizzes, with subject organization and a dashboard—built as a production-minded app, not a toy CRUD demo.
+**Elevator pitch:** StudyNova is an EdTech-style SaaS MVP that uses AI to turn a topic into structured study notes and quizzes, with subject organization and a dashboard-built as a production-minded app, not a toy CRUD demo.
 
 ---
 

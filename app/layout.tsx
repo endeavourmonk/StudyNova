@@ -14,8 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "StudyNova",
-  description: "AI-powered study companion",
+  title: "StudyNova - AI-powered study notes",
+  description:
+    "Generate structured study notes from any topic, organize by subject, and test yourself with AI-generated quizzes.",
 };
 
 export default function RootLayout({
