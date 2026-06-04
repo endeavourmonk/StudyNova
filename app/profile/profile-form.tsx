@@ -37,10 +37,6 @@ export function ProfileForm({ initialProfile }: ProfileFormProps) {
     createInitialState(initialProfile),
   );
 
-  console.log('state ---------------->', state);
-  console.log('isPending ---------------->', isPending);
-  console.log('formAction ---------------->', formAction);
- 
   const savedProfile = state.profile;
   const [username, setUsername] = useState(savedProfile.username);
   const [usernameStatus, setUsernameStatus] =
