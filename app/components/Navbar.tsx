@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Show, UserButton } from "@clerk/nextjs";
+import { Show, SignOutButton, UserAvatar } from "@clerk/nextjs";
 
 import { Button } from "@/components/ui/button";
 
@@ -39,7 +39,19 @@ export function Navbar() {
             <Button variant="ghost" size="sm" asChild>
               <Link href="/app">Dashboard</Link>
             </Button>
-            <UserButton />
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/profile" className="flex items-center gap-2">
+                <span className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-full">
+                  <UserAvatar />
+                </span>
+                <span className="hidden sm:inline">Profile</span>
+              </Link>
+            </Button>
+            <SignOutButton>
+              <Button variant="outline" size="sm">
+                Sign out
+              </Button>
+            </SignOutButton>
           </Show>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import { and, count, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq, ne } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "../index";
@@ -48,6 +48,24 @@ export async function fetchUserByClerkId(clerkUserId: string) {
     .where(eq(usersTable.clerkUserId, clerkUserId));
 
   return user ?? null;
+}
+
+export async function isUsernameTaken(
+  username: string,
+  excludeUserId?: string,
+) {
+  const conditions = [eq(usersTable.username, username)];
+  if (excludeUserId) {
+    conditions.push(ne(usersTable.userId, excludeUserId));
+  }
+
+  const [row] = await db
+    .select({ userId: usersTable.userId })
+    .from(usersTable)
+    .where(and(...conditions))
+    .limit(1);
+
+  return !!row;
 }
 
 export async function createUser(input: CreateUserInput) {
