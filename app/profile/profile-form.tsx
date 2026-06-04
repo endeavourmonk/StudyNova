@@ -196,7 +196,7 @@ export function ProfileForm({ initialProfile }: ProfileFormProps) {
             </p>
           )}
         </CardContent>
-        <CardFooter>
+        <CardFooter className="py-4">
           <Button type="submit" disabled={isPending || usernameBlocked}>
             {isPending ? (
               <>
