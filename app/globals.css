@@ -2,6 +2,9 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* API routes have no Tailwind classes; exclude to avoid Turbopack reading app/api as a file */
+@source not "./api/**";
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
