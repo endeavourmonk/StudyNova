@@ -53,7 +53,6 @@ export async function generateNote(
   });
 
   const raw = response.choices[0].message.content?.trim() ?? "";
-
   let parsedJson: unknown;
   try {
     parsedJson = JSON.parse(raw);

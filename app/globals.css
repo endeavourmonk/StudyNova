@@ -130,4 +130,18 @@
   html {
     @apply font-sans;
   }
+  /* Hide Sign Up page footer */
+  .cl-footerAction__signUp {
+    display: none !important;
+  }
+
+  /* Hide Sign In page footer */
+  .cl-footerAction__signIn {
+    display: none !important;
+  }
+
+  /* Hide "Secured by Clerk" + "Development mode" */
+  .cl-footerItem {
+    display: none !important;
+  }
 }
