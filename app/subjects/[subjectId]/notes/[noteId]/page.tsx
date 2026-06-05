@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
-import { ChevronLeft, Pencil } from "lucide-react";
+import { ChevronLeft, ClipboardList, Pencil } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { Navbar } from "@/app/components/Navbar";
 import { DeleteNoteButton } from "@/app/notes/delete-note-button";
 import { NoteContentView } from "@/app/notes/note-content-view";
+import { GenerateQuizButton } from "./generate-quiz-button";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -17,10 +18,18 @@ import {
 import { fetchNoteByIdForSubject } from "@/db/queries/notes";
 import { fetchSubjectById } from "@/db/queries/subjects";
 import { fetchUserByClerkId } from "@/db/queries/users";
+import { fetchQuizzesMany } from "@/db/queries/quizzes";
 
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat("en", {
     dateStyle: "long",
+    timeStyle: "short",
+  }).format(date);
+}
+
+function formatDateShort(date: Date) {
+  return new Intl.DateTimeFormat("en", {
+    dateStyle: "medium",
     timeStyle: "short",
   }).format(date);
 }
@@ -47,6 +56,11 @@ export default async function NoteDetailPage({ params }: NoteDetailPageProps) {
   if (!note) {
     notFound();
   }
+
+  const { data: quizzes } = await fetchQuizzesMany(dbUser.userId, {
+    noteId: note.noteId,
+    pageSize: 20,
+  });
 
   return (
     <div className="flex flex-1 flex-col">
@@ -85,8 +99,65 @@ export default async function NoteDetailPage({ params }: NoteDetailPageProps) {
               noteId={note.noteId}
               noteTitle={note.title}
             />
+            <div className="ml-auto">
+              <GenerateQuizButton noteId={note.noteId} subjectId={subject.subjectId} />
+            </div>
           </div>
         </Card>
+
+        {/* Quiz History */}
+        <section className="mx-auto mt-10 max-w-2xl">
+          <div className="mb-4 flex items-center gap-2">
+            <ClipboardList className="size-5 text-muted-foreground" />
+            <h2 className="text-lg font-semibold">Quizzes</h2>
+            {quizzes.length > 0 && (
+              <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                {quizzes.length}
+              </span>
+            )}
+          </div>
+
+          {quizzes.length === 0 ? (
+            <Card className="border-dashed">
+              <CardHeader className="items-center text-center py-8">
+                <div className="mb-2 flex size-12 items-center justify-center rounded-full bg-muted">
+                  <ClipboardList className="size-6 text-muted-foreground" />
+                </div>
+                <CardTitle className="text-base">No quizzes yet</CardTitle>
+                <CardDescription>
+                  Generate a quiz from this note to test your knowledge.
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {quizzes.map((quiz, index) => (
+                <Link
+                  key={quiz.quizId}
+                  href={`/subjects/${subject.subjectId}/notes/${note.noteId}/quiz/${quiz.quizId}`}
+                  className="flex items-center justify-between rounded-lg border bg-card p-4 transition-colors hover:bg-muted/50"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+                      {quizzes.length - index}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">
+                        Quiz #{quizzes.length - index}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {quiz.questionsJson.length} questions · Generated {formatDateShort(quiz.createdAt)}
+                      </p>
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="sm" tabIndex={-1}>
+                    Attempt →
+                  </Button>
+                </Link>
+              ))}
+            </div>
+          )}
+        </section>
       </main>
     </div>
   );
