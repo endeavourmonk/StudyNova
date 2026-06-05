@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { db } from "../index";
 import { notesTable } from "../schemas/notes";
+import { fetchSubjectById } from "./subjects";
 import {
   PaginationParams,
   resolvePagination,
@@ -66,7 +67,31 @@ export async function fetchNoteById(noteId: string, userId: string) {
   return note ?? null;
 }
 
+export async function fetchNoteByIdForSubject(
+  noteId: string,
+  subjectId: string,
+  userId: string,
+) {
+  const [note] = await db
+    .select()
+    .from(notesTable)
+    .where(
+      and(
+        eq(notesTable.noteId, noteId),
+        eq(notesTable.subjectId, subjectId),
+        eq(notesTable.userId, userId),
+      ),
+    );
+
+  return note ?? null;
+}
+
 export async function createNote(userId: string, input: CreateNoteInput) {
+  const subject = await fetchSubjectById(input.subjectId, userId);
+  if (!subject) {
+    return null;
+  }
+
   const [note] = await db
     .insert(notesTable)
     .values({ ...input, userId })
@@ -80,6 +105,13 @@ export async function updateNote(
   userId: string,
   input: UpdateNoteInput,
 ) {
+  if (input.subjectId !== undefined) {
+    const subject = await fetchSubjectById(input.subjectId, userId);
+    if (!subject) {
+      return null;
+    }
+  }
+
   const [note] = await db
     .update(notesTable)
     .set(input)

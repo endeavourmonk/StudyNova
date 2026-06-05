@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
-import { ChevronLeft, Pencil } from "lucide-react";
+import { ChevronLeft, FileText, Pencil, Plus } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { Navbar } from "@/app/components/Navbar";
@@ -8,17 +8,25 @@ import { DeleteSubjectButton } from "@/app/subjects/delete-subject-button";
 import { Button } from "@/components/ui/button";
 import {
   Card,
-  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { fetchNotesMany } from "@/db/queries/notes";
 import { fetchSubjectById } from "@/db/queries/subjects";
 import { fetchUserByClerkId } from "@/db/queries/users";
 
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat("en", {
-    dateStyle: "long",
+    dateStyle: "medium",
     timeStyle: "short",
   }).format(date);
 }
@@ -43,6 +51,11 @@ export default async function SubjectDetailPage({
     notFound();
   }
 
+  const { data: notes } = await fetchNotesMany(dbUser.userId, {
+    subjectId: subject.subjectId,
+    pageSize: 100,
+  });
+
   return (
     <div className="flex flex-1 flex-col">
       <Navbar />
@@ -54,26 +67,20 @@ export default async function SubjectDetailPage({
           </Link>
         </Button>
 
-        <Card className="mx-auto max-w-lg">
-          <CardHeader>
-            <CardTitle className="text-2xl">{subject.name}</CardTitle>
-            <CardDescription>Subject details</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4 text-sm">
-            <div className="flex justify-between gap-4 border-b py-2">
-              <span className="text-muted-foreground">Created</span>
-              <span>{formatDate(subject.createdAt)}</span>
-            </div>
-            <div className="flex justify-between gap-4 border-b py-2">
-              <span className="text-muted-foreground">Last updated</span>
-              <span>{formatDate(subject.updatedAt)}</span>
-            </div>
-          </CardContent>
-          <div className="flex flex-wrap gap-2 border-t px-6 py-4">
+        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">
+              {subject.name}
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Created {formatDate(subject.createdAt)}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" asChild>
               <Link href={`/subjects/${subject.subjectId}/edit`}>
                 <Pencil />
-                Edit
+                Edit subject
               </Link>
             </Button>
             <DeleteSubjectButton
@@ -81,7 +88,88 @@ export default async function SubjectDetailPage({
               subjectName={subject.name}
             />
           </div>
-        </Card>
+        </div>
+
+        <section>
+          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold">Notes</h2>
+              <p className="text-sm text-muted-foreground">
+                Study notes in this subject.
+              </p>
+            </div>
+            <Button asChild>
+              <Link href={`/subjects/${subject.subjectId}/notes/new`}>
+                <Plus />
+                New note
+              </Link>
+            </Button>
+          </div>
+
+          {notes.length === 0 ? (
+            <Card className="border-dashed">
+              <CardHeader className="items-center text-center">
+                <div className="mb-2 flex size-12 items-center justify-center rounded-full bg-muted">
+                  <FileText className="size-6 text-muted-foreground" />
+                </div>
+                <CardTitle>No notes yet</CardTitle>
+                <CardDescription>
+                  Create your first note for {subject.name}.
+                </CardDescription>
+                <Button className="mt-4" asChild>
+                  <Link href={`/subjects/${subject.subjectId}/notes/new`}>
+                    <Plus />
+                    Create note
+                  </Link>
+                </Button>
+              </CardHeader>
+            </Card>
+          ) : (
+            <div className="rounded-lg border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Title</TableHead>
+                    <TableHead className="hidden sm:table-cell">Topic</TableHead>
+                    <TableHead className="hidden md:table-cell">
+                      Updated
+                    </TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {notes.map((note) => (
+                    <TableRow key={note.noteId}>
+                      <TableCell className="font-medium">
+                        <Link
+                          href={`/subjects/${subject.subjectId}/notes/${note.noteId}`}
+                          className="hover:underline"
+                        >
+                          {note.title}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="hidden text-muted-foreground sm:table-cell">
+                        {note.topic}
+                      </TableCell>
+                      <TableCell className="hidden text-muted-foreground md:table-cell">
+                        {formatDate(note.updatedAt)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="sm" asChild>
+                          <Link
+                            href={`/subjects/${subject.subjectId}/notes/${note.noteId}/edit`}
+                          >
+                            Edit
+                          </Link>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </section>
       </main>
     </div>
   );
