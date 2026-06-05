@@ -15,6 +15,27 @@
       "when": 1780598915892,
       "tag": "0001_worthless_joshua_kane",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780667677616,
+      "tag": "0002_rare_thunderbolts",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1780667788065,
+      "tag": "0003_misty_guardsmen",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1780668103162,
+      "tag": "0004_perfect_pestilence",
+      "breakpoints": true
     }
   ]
 }

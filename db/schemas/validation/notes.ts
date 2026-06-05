@@ -11,6 +11,11 @@ export const updateNoteSchema = createNoteSchema
   .pick({ title: true, topic: true, content: true, subjectId: true })
   .partial();
 
+export const aiNoteResponseSchema = z.object({
+  title: z.string().min(1).max(256),
+  content: z.string().min(1),
+});
+
 export const fetchNotesParamsSchema = z.object({
   subjectId: z.string().uuid().optional(),
   search: z.string().optional(),

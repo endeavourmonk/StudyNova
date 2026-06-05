@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 
 import { Navbar } from "@/app/components/Navbar";
 import { DeleteNoteButton } from "@/app/notes/delete-note-button";
+import { NoteContentView } from "@/app/notes/note-content-view";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -68,9 +69,7 @@ export default async function NoteDetailPage({ params }: NoteDetailPageProps) {
               <span>Created {formatDate(note.createdAt)}</span>
               <span>Updated {formatDate(note.updatedAt)}</span>
             </div>
-            <div className="whitespace-pre-wrap rounded-lg border bg-muted/30 p-4 text-sm leading-relaxed">
-              {note.content}
-            </div>
+            <NoteContentView content={note.content} />
           </CardContent>
           <div className="flex flex-wrap gap-2 border-t px-6 py-4">
             <Button variant="outline" size="sm" asChild>
