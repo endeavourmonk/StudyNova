@@ -50,48 +50,48 @@ export async function createNoteAction(
   const fields = parseNoteFormData(formData);
   const intent = String(formData.get("intent") ?? "create");
 
-  try {
-    const dbUser = await getAuthenticatedDbUser();
+  const dbUser = await getAuthenticatedDbUser();
 
-    if (!dbUser) {
+  if (!dbUser) {
+    return {
+      error:
+        "Your account is still being set up. Please try again in a moment.",
+      title: fields.title,
+      topic: fields.topic,
+      content: _prevState.content,
+    };
+  }
+
+  const subject = await fetchSubjectById(subjectId, dbUser.userId);
+  if (!subject) {
+    return {
+      error: "Subject not found",
+      title: fields.title,
+      topic: fields.topic,
+      content: _prevState.content,
+    };
+  }
+
+  let title = fields.title;
+  let topic = fields.topic;
+  let content = fields.content;
+
+  if (intent === "generate") {
+    const parsedTopic = generateNoteInputSchema.safeParse({
+      topic: fields.topic,
+    });
+    if (!parsedTopic.success) {
+      const firstIssue =
+        parsedTopic.error.issues[0]?.message ?? "Topic is required";
       return {
-        error:
-          "Your account is still being set up. Please try again in a moment.",
+        error: firstIssue,
         title: fields.title,
         topic: fields.topic,
-        content: _prevState.content,
+        content: null,
       };
     }
 
-    const subject = await fetchSubjectById(subjectId, dbUser.userId);
-    if (!subject) {
-      return {
-        error: "Subject not found",
-        title: fields.title,
-        topic: fields.topic,
-        content: _prevState.content,
-      };
-    }
-
-    let title = fields.title;
-    let topic = fields.topic;
-    let content = fields.content;
-
-    if (intent === "generate") {
-      const parsedTopic = generateNoteInputSchema.safeParse({
-        topic: fields.topic,
-      });
-      if (!parsedTopic.success) {
-        const firstIssue =
-          parsedTopic.error.issues[0]?.message ?? "Topic is required";
-        return {
-          error: firstIssue,
-          title: fields.title,
-          topic: fields.topic,
-          content: null,
-        };
-      }
-
+    try {
       const generated = await generateNote({
         subjectName: subject.name,
         topic: parsedTopic.data.topic,
@@ -100,53 +100,53 @@ export async function createNoteAction(
       title = fields.title || generated.title;
       topic = parsedTopic.data.topic;
       content = generated.content;
-    } else if (!content) {
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to generate note";
       return {
-        error: "Content is required for manual notes",
+        error: message,
         title: fields.title,
         topic: fields.topic,
-        content: "",
+        content: null,
       };
     }
-
-    const parsed = createNoteSchema.safeParse({
-      title,
-      topic,
-      content,
-      subjectId,
-    });
-    if (!parsed.success) {
-      const firstIssue = parsed.error.issues[0]?.message ?? "Validation failed";
-      return {
-        error: firstIssue,
-        title: fields.title,
-        topic: fields.topic,
-        content,
-      };
-    }
-
-    const note = await createNoteInDb(dbUser.userId, parsed.data);
-    if (!note) {
-      return {
-        error: "Failed to create note",
-        title: fields.title,
-        topic: fields.topic,
-        content,
-      };
-    }
-
-    revalidatePath(`/subjects/${subjectId}`);
-    redirect(`/subjects/${subjectId}/notes/${note.noteId}`);
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to create note";
+  } else if (!content) {
     return {
-      error: message,
+      error: "Content is required for manual notes",
       title: fields.title,
       topic: fields.topic,
-      content: _prevState.content,
+      content: "",
     };
   }
+
+  const parsed = createNoteSchema.safeParse({
+    title,
+    topic,
+    content,
+    subjectId,
+  });
+  if (!parsed.success) {
+    const firstIssue = parsed.error.issues[0]?.message ?? "Validation failed";
+    return {
+      error: firstIssue,
+      title: fields.title,
+      topic: fields.topic,
+      content,
+    };
+  }
+
+  const note = await createNoteInDb(dbUser.userId, parsed.data);
+  if (!note) {
+    return {
+      error: "Failed to create note",
+      title: fields.title,
+      topic: fields.topic,
+      content,
+    };
+  }
+
+  revalidatePath(`/subjects/${subjectId}`);
+  redirect(`/subjects/${subjectId}/notes/${note.noteId}`);
 }
 
 export async function updateNoteAction(
