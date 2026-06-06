@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { auth } from "@clerk/nextjs/server";
 import { ChevronLeft } from "lucide-react";
 import { notFound } from "next/navigation";
 
@@ -7,7 +6,7 @@ import { Navbar } from "@/app/components/Navbar";
 import { SubjectForm } from "@/app/subjects/subject-form";
 import { Button } from "@/components/ui/button";
 import { fetchSubjectById } from "@/db/queries/subjects";
-import { fetchUserByClerkId } from "@/db/queries/users";
+import { getCurrentUser } from "@/db/queries/get-current-user";
 
 type EditSubjectPageProps = {
   params: Promise<{ subjectId: string }>;
@@ -15,8 +14,7 @@ type EditSubjectPageProps = {
 
 export default async function EditSubjectPage({ params }: EditSubjectPageProps) {
   const { subjectId } = await params;
-  const { userId: clerkUserId } = await auth.protect();
-  const dbUser = await fetchUserByClerkId(clerkUserId);
+  const dbUser = await getCurrentUser();
 
   if (!dbUser) {
     notFound();

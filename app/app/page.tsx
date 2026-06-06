@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { auth } from "@clerk/nextjs/server";
 import { FolderOpen, Plus } from "lucide-react";
 
 import { Navbar } from "@/app/components/Navbar";
@@ -19,7 +18,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { fetchSubjectsMany } from "@/db/queries/subjects";
-import { fetchUserByClerkId } from "@/db/queries/users";
+import { getCurrentUser } from "@/db/queries/get-current-user";
 
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat("en", {
@@ -29,8 +28,7 @@ function formatDate(date: Date) {
 }
 
 export default async function DashboardPage() {
-  const { userId: clerkUserId } = await auth.protect();
-  const dbUser = await fetchUserByClerkId(clerkUserId);
+  const dbUser = await getCurrentUser();
 
   if (!dbUser) {
     return (

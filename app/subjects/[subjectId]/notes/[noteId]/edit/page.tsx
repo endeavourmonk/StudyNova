@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { auth } from "@clerk/nextjs/server";
 import { ChevronLeft } from "lucide-react";
 import { notFound } from "next/navigation";
 
@@ -8,7 +7,7 @@ import { NoteForm } from "@/app/notes/note-form";
 import { Button } from "@/components/ui/button";
 import { fetchNoteByIdForSubject } from "@/db/queries/notes";
 import { fetchSubjectById } from "@/db/queries/subjects";
-import { fetchUserByClerkId } from "@/db/queries/users";
+import { getCurrentUser } from "@/db/queries/get-current-user";
 
 type EditNotePageProps = {
   params: Promise<{ subjectId: string; noteId: string }>;
@@ -16,22 +15,19 @@ type EditNotePageProps = {
 
 export default async function EditNotePage({ params }: EditNotePageProps) {
   const { subjectId, noteId } = await params;
-  const { userId: clerkUserId } = await auth.protect();
-  const dbUser = await fetchUserByClerkId(clerkUserId);
+  const dbUser = await getCurrentUser();
 
   if (!dbUser) {
     notFound();
   }
 
-  const subject = await fetchSubjectById(subjectId, dbUser.userId);
-  if (!subject) {
-    notFound();
-  }
+  const [subject, note] = await Promise.all([
+    fetchSubjectById(subjectId, dbUser.userId),
+    fetchNoteByIdForSubject(noteId, subjectId, dbUser.userId),
+  ]);
 
-  const note = await fetchNoteByIdForSubject(noteId, subjectId, dbUser.userId);
-  if (!note) {
-    notFound();
-  }
+  if (!subject) notFound();
+  if (!note) notFound();
 
   return (
     <div className="flex flex-1 flex-col">

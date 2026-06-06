@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { auth } from "@clerk/nextjs/server";
+import { Suspense } from "react";
 import { ChevronLeft, ClipboardList, Pencil } from "lucide-react";
 import { notFound } from "next/navigation";
 
@@ -15,9 +15,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { fetchNoteByIdForSubject } from "@/db/queries/notes";
 import { fetchSubjectById } from "@/db/queries/subjects";
-import { fetchUserByClerkId } from "@/db/queries/users";
+import { getCurrentUser } from "@/db/queries/get-current-user";
 import { fetchQuizzesMany } from "@/db/queries/quizzes";
 
 function formatDate(date: Date) {
@@ -38,29 +39,125 @@ type NoteDetailPageProps = {
   params: Promise<{ subjectId: string; noteId: string }>;
 };
 
+// ─── Quiz history (async server component, streams in independently) ────────
+
+async function QuizHistory({
+  userId,
+  noteId,
+  subjectId,
+}: {
+  userId: string;
+  noteId: string;
+  subjectId: string;
+}) {
+  const { data: quizzes } = await fetchQuizzesMany(userId, {
+    noteId,
+    pageSize: 20,
+  });
+
+  return (
+    <>
+      <div className="mb-4 flex items-center gap-2">
+        <ClipboardList className="size-5 text-muted-foreground" />
+        <h2 className="text-lg font-semibold">Quizzes</h2>
+        {quizzes.length > 0 && (
+          <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+            {quizzes.length}
+          </span>
+        )}
+      </div>
+
+      {quizzes.length === 0 ? (
+        <Card className="border-dashed">
+          <CardHeader className="items-center text-center py-8">
+            <div className="mb-2 flex size-12 items-center justify-center rounded-full bg-muted">
+              <ClipboardList className="size-6 text-muted-foreground" />
+            </div>
+            <CardTitle className="text-base">No quizzes yet</CardTitle>
+            <CardDescription>
+              Generate a quiz from this note to test your knowledge.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {quizzes.map((quiz, index) => (
+            <Link
+              key={quiz.quizId}
+              href={`/subjects/${subjectId}/notes/${noteId}/quiz/${quiz.quizId}`}
+              className="flex items-center justify-between rounded-lg border bg-card p-4 transition-colors hover:bg-muted/50"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+                  {quizzes.length - index}
+                </div>
+                <div>
+                  <p className="text-sm font-medium">
+                    Quiz #{quizzes.length - index}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {quiz.questionsJson.length} questions · Generated{" "}
+                    {formatDateShort(quiz.createdAt)}
+                  </p>
+                </div>
+              </div>
+              <Button variant="ghost" size="sm" tabIndex={-1}>
+                Attempt →
+              </Button>
+            </Link>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
+function QuizHistorySkeleton() {
+  return (
+    <>
+      <div className="mb-4 flex items-center gap-2">
+        <Skeleton className="size-5 rounded" />
+        <Skeleton className="h-6 w-20" />
+      </div>
+      <div className="space-y-3">
+        {Array.from({ length: 2 }).map((_, i) => (
+          <div
+            key={i}
+            className="flex items-center justify-between rounded-lg border bg-card p-4"
+          >
+            <div className="flex items-center gap-3">
+              <Skeleton className="size-9 rounded-full" />
+              <div className="space-y-1">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-3 w-44" />
+              </div>
+            </div>
+            <Skeleton className="h-8 w-20" />
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+// ─── Page ───────────────────────────────────────────────────────────────────
+
 export default async function NoteDetailPage({ params }: NoteDetailPageProps) {
   const { subjectId, noteId } = await params;
-  const { userId: clerkUserId } = await auth.protect();
-  const dbUser = await fetchUserByClerkId(clerkUserId);
+  const dbUser = await getCurrentUser();
 
   if (!dbUser) {
     notFound();
   }
 
-  const subject = await fetchSubjectById(subjectId, dbUser.userId);
-  if (!subject) {
-    notFound();
-  }
+  // Fetch subject and note in parallel — quiz history streams in separately below
+  const [subject, note] = await Promise.all([
+    fetchSubjectById(subjectId, dbUser.userId),
+    fetchNoteByIdForSubject(noteId, subjectId, dbUser.userId),
+  ]);
 
-  const note = await fetchNoteByIdForSubject(noteId, subjectId, dbUser.userId);
-  if (!note) {
-    notFound();
-  }
-
-  const { data: quizzes } = await fetchQuizzesMany(dbUser.userId, {
-    noteId: note.noteId,
-    pageSize: 20,
-  });
+  if (!subject) notFound();
+  if (!note) notFound();
 
   return (
     <div className="flex flex-1 flex-col">
@@ -100,63 +197,23 @@ export default async function NoteDetailPage({ params }: NoteDetailPageProps) {
               noteTitle={note.title}
             />
             <div className="ml-auto">
-              <GenerateQuizButton noteId={note.noteId} subjectId={subject.subjectId} />
+              <GenerateQuizButton
+                noteId={note.noteId}
+                subjectId={subject.subjectId}
+              />
             </div>
           </div>
         </Card>
 
-        {/* Quiz History */}
+        {/* Quiz history streams in independently — note card above is already visible */}
         <section className="mx-auto mt-10 max-w-2xl">
-          <div className="mb-4 flex items-center gap-2">
-            <ClipboardList className="size-5 text-muted-foreground" />
-            <h2 className="text-lg font-semibold">Quizzes</h2>
-            {quizzes.length > 0 && (
-              <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                {quizzes.length}
-              </span>
-            )}
-          </div>
-
-          {quizzes.length === 0 ? (
-            <Card className="border-dashed">
-              <CardHeader className="items-center text-center py-8">
-                <div className="mb-2 flex size-12 items-center justify-center rounded-full bg-muted">
-                  <ClipboardList className="size-6 text-muted-foreground" />
-                </div>
-                <CardTitle className="text-base">No quizzes yet</CardTitle>
-                <CardDescription>
-                  Generate a quiz from this note to test your knowledge.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-          ) : (
-            <div className="space-y-3">
-              {quizzes.map((quiz, index) => (
-                <Link
-                  key={quiz.quizId}
-                  href={`/subjects/${subject.subjectId}/notes/${note.noteId}/quiz/${quiz.quizId}`}
-                  className="flex items-center justify-between rounded-lg border bg-card p-4 transition-colors hover:bg-muted/50"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
-                      {quizzes.length - index}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">
-                        Quiz #{quizzes.length - index}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {quiz.questionsJson.length} questions · Generated {formatDateShort(quiz.createdAt)}
-                      </p>
-                    </div>
-                  </div>
-                  <Button variant="ghost" size="sm" tabIndex={-1}>
-                    Attempt →
-                  </Button>
-                </Link>
-              ))}
-            </div>
-          )}
+          <Suspense fallback={<QuizHistorySkeleton />}>
+            <QuizHistory
+              userId={dbUser.userId}
+              noteId={note.noteId}
+              subjectId={subject.subjectId}
+            />
+          </Suspense>
         </section>
       </main>
     </div>

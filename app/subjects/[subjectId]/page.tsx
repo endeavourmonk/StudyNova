@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { auth } from "@clerk/nextjs/server";
 import { ChevronLeft, FileText, Pencil, Plus } from "lucide-react";
 import { notFound } from "next/navigation";
 
@@ -22,7 +21,7 @@ import {
 } from "@/components/ui/table";
 import { fetchNotesMany } from "@/db/queries/notes";
 import { fetchSubjectById } from "@/db/queries/subjects";
-import { fetchUserByClerkId } from "@/db/queries/users";
+import { getCurrentUser } from "@/db/queries/get-current-user";
 
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat("en", {
@@ -39,22 +38,20 @@ export default async function SubjectDetailPage({
   params,
 }: SubjectDetailPageProps) {
   const { subjectId } = await params;
-  const { userId: clerkUserId } = await auth.protect();
-  const dbUser = await fetchUserByClerkId(clerkUserId);
+  const dbUser = await getCurrentUser();
 
   if (!dbUser) {
     notFound();
   }
 
-  const subject = await fetchSubjectById(subjectId, dbUser.userId);
+  const [subject, { data: notes }] = await Promise.all([
+    fetchSubjectById(subjectId, dbUser.userId),
+    fetchNotesMany(dbUser.userId, { subjectId, pageSize: 100 }),
+  ]);
+
   if (!subject) {
     notFound();
   }
-
-  const { data: notes } = await fetchNotesMany(dbUser.userId, {
-    subjectId: subject.subjectId,
-    pageSize: 100,
-  });
 
   return (
     <div className="flex flex-1 flex-col">
