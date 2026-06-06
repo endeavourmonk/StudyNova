@@ -26,7 +26,7 @@ export async function fetchQuizzesMany(
 ) {
   const { page, pageSize, offset } = resolvePagination(params);
 
-  const conditions = [eq(notesTable.userId, userId)];
+  const conditions = [eq(quizzesTable.userId, userId)];
 
   if (params.noteId) {
     conditions.push(eq(quizzesTable.noteId, params.noteId));
@@ -43,16 +43,12 @@ export async function fetchQuizzesMany(
         createdAt: quizzesTable.createdAt,
       })
       .from(quizzesTable)
-      .innerJoin(notesTable, eq(quizzesTable.noteId, notesTable.noteId))
       .where(where)
       .orderBy(desc(quizzesTable.createdAt))
       .limit(pageSize)
       .offset(offset),
-    db
-      .select({ total: count() })
-      .from(quizzesTable)
-      .innerJoin(notesTable, eq(quizzesTable.noteId, notesTable.noteId))
-      .where(where),
+
+    db.select({ total: count() }).from(quizzesTable).where(where),
   ]);
 
   return toPaginatedResult(data, total, page, pageSize);
@@ -90,6 +86,7 @@ export async function createQuiz(userId: string, input: CreateQuizInput) {
     .values({
       noteId: input.noteId,
       questionsJson: input.questionsJson,
+      userId,
     })
     .returning();
 
