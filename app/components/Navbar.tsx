@@ -48,6 +48,9 @@ export function Navbar() {
               <Link href="/app/stats">Stats</Link>
             </Button>
             <Button variant="ghost" size="sm" asChild>
+              <Link href="/roadmaps">Roadmaps</Link>
+            </Button>
+            <Button variant="ghost" size="sm" asChild>
               <Link href="/profile" className="flex items-center gap-2">
                 <span className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-full">
                   <UserAvatar />

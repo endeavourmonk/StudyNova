@@ -3,6 +3,7 @@ import { relations } from "drizzle-orm";
 import { notesTable } from "./notes";
 import { quizAttemptsTable } from "./quiz-attempts";
 import { quizzesTable } from "./quizzes";
+import { roadmapsTable } from "./roadmaps";
 import { subjectsTable } from "./subjects";
 import { usersTable } from "./users";
 
@@ -10,6 +11,7 @@ export const userRelations = relations(usersTable, ({ many }) => ({
   subjects: many(subjectsTable),
   notes: many(notesTable),
   quizAttempts: many(quizAttemptsTable),
+  roadmaps: many(roadmapsTable),
 }));
 
 export const subjectRelations = relations(subjectsTable, ({ one, many }) => ({
@@ -47,6 +49,13 @@ export const quizAttemptRelations = relations(quizAttemptsTable, ({ one }) => ({
   }),
   user: one(usersTable, {
     fields: [quizAttemptsTable.userId],
+    references: [usersTable.userId],
+  }),
+}));
+
+export const roadmapRelations = relations(roadmapsTable, ({ one }) => ({
+  user: one(usersTable, {
+    fields: [roadmapsTable.userId],
     references: [usersTable.userId],
   }),
 }));
