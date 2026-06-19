@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { ChevronLeft, ClipboardList, Pencil } from "lucide-react";
+import { ChevronLeft, ClipboardList, Pencil, Trophy } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { Navbar } from "@/app/components/Navbar";
@@ -20,6 +20,7 @@ import { fetchNoteByIdForSubject } from "@/db/queries/notes";
 import { fetchSubjectById } from "@/db/queries/subjects";
 import { getCurrentUser } from "@/db/queries/get-current-user";
 import { fetchQuizzesMany } from "@/db/queries/quizzes";
+import { fetchBestAttemptPerQuiz } from "@/db/queries/quiz-attempts";
 
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat("en", {
@@ -55,6 +56,13 @@ async function QuizHistory({
     pageSize: 20,
   });
 
+  // Fetch best attempts for all quizzes in parallel
+  const quizIds = quizzes.map((q) => q.quizId);
+  const bestAttempts = await fetchBestAttemptPerQuiz(userId, quizIds);
+  const bestMap = new Map(
+    bestAttempts.map((a) => [a.quizId, a]),
+  );
+
   return (
     <>
       <div className="mb-4 flex items-center gap-2">
@@ -81,31 +89,42 @@ async function QuizHistory({
         </Card>
       ) : (
         <div className="space-y-3">
-          {quizzes.map((quiz, index) => (
-            <Link
-              key={quiz.quizId}
-              href={`/subjects/${subjectId}/notes/${noteId}/quiz/${quiz.quizId}`}
-              className="flex items-center justify-between rounded-lg border bg-card p-4 transition-colors hover:bg-muted/50"
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
-                  {quizzes.length - index}
+          {quizzes.map((quiz, index) => {
+            const best = bestMap.get(quiz.quizId);
+            return (
+              <Link
+                key={quiz.quizId}
+                href={`/subjects/${subjectId}/notes/${noteId}/quiz/${quiz.quizId}`}
+                className="flex items-center justify-between rounded-lg border bg-card p-4 transition-colors hover:bg-muted/50"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+                    {quizzes.length - index}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">
+                      Quiz #{quizzes.length - index}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {quiz.questionsJson.length} questions · Generated{" "}
+                      {formatDateShort(quiz.createdAt)}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-medium">
-                    Quiz #{quizzes.length - index}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {quiz.questionsJson.length} questions · Generated{" "}
-                    {formatDateShort(quiz.createdAt)}
-                  </p>
+                <div className="flex items-center gap-3">
+                  {best ? (
+                    <span className="flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                      <Trophy className="size-3.5" />
+                      Best: {Number(best.bestScore)}/{Number(best.totalQuestions)}
+                    </span>
+                  ) : null}
+                  <Button variant="ghost" size="sm" tabIndex={-1}>
+                    Attempt →
+                  </Button>
                 </div>
-              </div>
-              <Button variant="ghost" size="sm" tabIndex={-1}>
-                Attempt →
-              </Button>
-            </Link>
-          ))}
+              </Link>
+            );
+          })}
         </div>
       )}
     </>

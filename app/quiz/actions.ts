@@ -4,7 +4,8 @@ import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { createQuiz, deleteQuiz } from "@/db/queries/quizzes";
+import { createQuiz, deleteQuiz, fetchQuizById } from "@/db/queries/quizzes";
+import { createQuizAttempt } from "@/db/queries/quiz-attempts";
 import { fetchNoteByIdForSubject } from "@/db/queries/notes";
 import { fetchSubjectById } from "@/db/queries/subjects";
 import { fetchUserByClerkId } from "@/db/queries/users";
@@ -60,6 +61,53 @@ export async function generateQuizAction(
 
   revalidatePath(`/subjects/${subjectId}/notes/${noteId}`);
   redirect(`/subjects/${subjectId}/notes/${noteId}/quiz/${quiz.quizId}`);
+}
+
+export type SubmitQuizAttemptResult =
+  | { success: true; attemptId: string; score: number; totalQuestions: number }
+  | { success: false; error: string };
+
+export async function submitQuizAttemptAction(
+  quizId: string,
+  answers: number[],
+): Promise<SubmitQuizAttemptResult> {
+  const dbUser = await getAuthenticatedDbUser();
+  if (!dbUser) {
+    return { success: false, error: "Your account is still being set up. Please try again." };
+  }
+
+  const quiz = await fetchQuizById(quizId, dbUser.userId);
+  if (!quiz) {
+    return { success: false, error: "Quiz not found." };
+  }
+
+  const questions = quiz.questionsJson;
+  if (answers.length !== questions.length) {
+    return { success: false, error: "Answer count does not match question count." };
+  }
+
+  const score = questions.reduce(
+    (acc, q, i) => acc + (answers[i] === q.correctAnswer ? 1 : 0),
+    0,
+  );
+
+  const attempt = await createQuizAttempt(dbUser.userId, {
+    quizId,
+    score,
+    totalQuestions: questions.length,
+    answersJson: answers,
+  });
+
+  if (!attempt) {
+    return { success: false, error: "Failed to save attempt." };
+  }
+
+  return {
+    success: true,
+    attemptId: attempt.attemptId,
+    score,
+    totalQuestions: questions.length,
+  };
 }
 
 export async function deleteQuizAction(

@@ -1,12 +1,34 @@
 "use client";
 
-import { useState } from "react";
-import { CheckCircle2, XCircle, Trophy, RotateCcw, ChevronLeft } from "lucide-react";
+import { useState, useTransition } from "react";
+import {
+  CheckCircle2,
+  XCircle,
+  Trophy,
+  RotateCcw,
+  ChevronLeft,
+  Loader2,
+  History,
+} from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import type { QuizQuestion } from "@/db/schemas/quizzes";
+import { submitQuizAttemptAction } from "@/app/quiz/actions";
+
+type AttemptRecord = {
+  attemptId: string;
+  score: number;
+  totalQuestions: number;
+  completedAt: Date;
+};
 
 type QuizAttemptProps = {
   quizId: string;
@@ -14,12 +36,20 @@ type QuizAttemptProps = {
   subjectId: string;
   noteTitle: string;
   questions: QuizQuestion[];
+  pastAttempts: AttemptRecord[];
 };
 
-type Phase = "attempt" | "results";
+type Phase = "attempt" | "submitting" | "results";
 
 function cn(...classes: (string | false | null | undefined)[]) {
   return classes.filter(Boolean).join(" ");
+}
+
+function formatDateShort(date: Date) {
+  return new Intl.DateTimeFormat("en", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(date));
 }
 
 export function QuizAttempt({
@@ -28,16 +58,21 @@ export function QuizAttempt({
   subjectId,
   noteTitle,
   questions,
+  pastAttempts: initialPastAttempts,
 }: QuizAttemptProps) {
   const [selectedAnswers, setSelectedAnswers] = useState<(number | null)[]>(
     Array(questions.length).fill(null),
   );
   const [phase, setPhase] = useState<Phase>("attempt");
+  const [pastAttempts, setPastAttempts] =
+    useState<AttemptRecord[]>(initialPastAttempts);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
 
   const allAnswered = selectedAnswers.every((a) => a !== null);
 
   function selectAnswer(questionIdx: number, optionIdx: number) {
-    if (phase === "results") return;
+    if (phase !== "attempt") return;
     setSelectedAnswers((prev) => {
       const next = [...prev];
       next[questionIdx] = optionIdx;
@@ -47,12 +82,36 @@ export function QuizAttempt({
 
   function handleSubmit() {
     if (!allAnswered) return;
-    setPhase("results");
+    setPhase("submitting");
+    setSubmitError(null);
+
+    startTransition(async () => {
+      const result = await submitQuizAttemptAction(
+        quizId,
+        selectedAnswers as number[],
+      );
+      if (result.success) {
+        setPastAttempts((prev) => [
+          {
+            attemptId: result.attemptId,
+            score: result.score,
+            totalQuestions: result.totalQuestions,
+            completedAt: new Date(),
+          },
+          ...prev,
+        ]);
+        setPhase("results");
+      } else {
+        setSubmitError(result.error);
+        setPhase("attempt");
+      }
+    });
   }
 
   function handleRetry() {
     setSelectedAnswers(Array(questions.length).fill(null));
     setPhase("attempt");
+    setSubmitError(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -85,6 +144,12 @@ export function QuizAttempt({
           ? "Good effort. Review the missed questions."
           : "Keep studying — you'll get there!";
 
+  function getAttemptScoreColor(pct: number) {
+    if (pct >= 80) return "text-emerald-600 dark:text-emerald-400";
+    if (pct >= 50) return "text-amber-600 dark:text-amber-400";
+    return "text-red-600 dark:text-red-400";
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -108,7 +173,8 @@ export function QuizAttempt({
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Quiz</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Based on: <span className="font-medium text-foreground">{noteTitle}</span>
+          Based on:{" "}
+          <span className="font-medium text-foreground">{noteTitle}</span>
         </p>
       </div>
 
@@ -121,6 +187,13 @@ export function QuizAttempt({
           </p>
           <p className="mt-1 text-lg font-medium">{percentage}%</p>
           <p className="mt-2 text-sm text-muted-foreground">{scoreMessage}</p>
+        </div>
+      )}
+
+      {/* Error banner */}
+      {submitError && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-400">
+          {submitError}
         </div>
       )}
 
@@ -179,8 +252,7 @@ export function QuizAttempt({
                     optionClass += isSelected
                       ? " border-primary bg-primary/5 font-medium"
                       : " hover:border-primary/50 hover:bg-muted/50";
-                  } else {
-                    // results phase
+                  } else if (phase === "results") {
                     if (isCorrectOption) {
                       optionClass +=
                         " border-emerald-400 bg-emerald-50 font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-700";
@@ -199,7 +271,7 @@ export function QuizAttempt({
                       type="button"
                       className={optionClass}
                       onClick={() => selectAnswer(qi, oi)}
-                      disabled={phase === "results"}
+                      disabled={phase !== "attempt"}
                       aria-pressed={isSelected}
                     >
                       {/* Letter badge */}
@@ -212,9 +284,11 @@ export function QuizAttempt({
                       {phase === "results" && isCorrectOption && (
                         <CheckCircle2 className="ml-auto size-4 shrink-0 text-emerald-500" />
                       )}
-                      {phase === "results" && isSelected && !isCorrectOption && (
-                        <XCircle className="ml-auto size-4 shrink-0 text-destructive" />
-                      )}
+                      {phase === "results" &&
+                        isSelected &&
+                        !isCorrectOption && (
+                          <XCircle className="ml-auto size-4 shrink-0 text-destructive" />
+                        )}
                     </button>
                   );
                 })}
@@ -225,7 +299,7 @@ export function QuizAttempt({
       </div>
 
       {/* Submit / Retry */}
-      {phase === "attempt" ? (
+      {phase === "attempt" || phase === "submitting" ? (
         <div className="flex flex-col items-start gap-2 pb-8">
           {!allAnswered && (
             <p className="text-sm text-muted-foreground">
@@ -235,10 +309,17 @@ export function QuizAttempt({
           <Button
             size="lg"
             onClick={handleSubmit}
-            disabled={!allAnswered}
+            disabled={!allAnswered || phase === "submitting"}
             id="submit-quiz-btn"
           >
-            Submit Quiz
+            {phase === "submitting" ? (
+              <>
+                <Loader2 className="size-4 animate-spin" />
+                Saving…
+              </>
+            ) : (
+              "Submit Quiz"
+            )}
           </Button>
         </div>
       ) : (
@@ -253,6 +334,57 @@ export function QuizAttempt({
             </Link>
           </Button>
         </div>
+      )}
+
+      {/* Past Attempts History */}
+      {pastAttempts.length > 0 && (
+        <section className="border-t pt-6">
+          <div className="mb-4 flex items-center gap-2">
+            <History className="size-5 text-muted-foreground" />
+            <h2 className="text-lg font-semibold">Attempt History</h2>
+            <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+              {pastAttempts.length}
+            </span>
+          </div>
+          <div className="space-y-2">
+            {pastAttempts.map((attempt, idx) => {
+              const pct = Math.round(
+                (attempt.score / attempt.totalQuestions) * 100,
+              );
+              return (
+                <div
+                  key={attempt.attemptId}
+                  className="flex items-center justify-between rounded-lg border bg-card p-3"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold text-muted-foreground">
+                      {pastAttempts.length - idx}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">
+                        Attempt #{pastAttempts.length - idx}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatDateShort(attempt.completedAt)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p
+                      className={cn(
+                        "text-sm font-bold tabular-nums",
+                        getAttemptScoreColor(pct),
+                      )}
+                    >
+                      {attempt.score}/{attempt.totalQuestions}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{pct}%</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
       )}
     </div>
   );

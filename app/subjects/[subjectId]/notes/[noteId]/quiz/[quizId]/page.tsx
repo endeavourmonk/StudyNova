@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Navbar } from "@/app/components/Navbar";
 import { QuizAttempt } from "./quiz-attempt";
 import { fetchQuizById } from "@/db/queries/quizzes";
+import { fetchAttemptsByQuiz } from "@/db/queries/quiz-attempts";
 import { fetchNoteByIdForSubject } from "@/db/queries/notes";
 import { fetchSubjectById } from "@/db/queries/subjects";
 import { getCurrentUser } from "@/db/queries/get-current-user";
@@ -29,6 +30,8 @@ export default async function QuizPage({ params }: QuizPageProps) {
     notFound();
   }
 
+  const pastAttempts = await fetchAttemptsByQuiz(quizId, dbUser.userId);
+
   return (
     <div className="flex flex-1 flex-col">
       <Navbar />
@@ -39,6 +42,7 @@ export default async function QuizPage({ params }: QuizPageProps) {
           subjectId={subject.subjectId}
           noteTitle={note.title}
           questions={quiz.questionsJson}
+          pastAttempts={pastAttempts}
         />
       </main>
     </div>
