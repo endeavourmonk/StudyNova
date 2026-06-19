@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import {
   ArrowRight,
   BookOpen,
@@ -6,6 +7,7 @@ import {
   ClipboardCheck,
   FolderOpen,
   LayoutDashboard,
+  Route,
   Search,
   Sparkles,
   Zap,
@@ -31,10 +33,22 @@ const features = [
       "Enter a subject and topic - get structured study notes in seconds, not hours.",
   },
   {
+    icon: Route,
+    title: "AI learning roadmaps",
+    description:
+      "Generate structured, step-by-step learning paths for any topic from beginner to advanced.",
+  },
+  {
     icon: FolderOpen,
     title: "Subject organization",
     description:
       "Group notes by DBMS, Operating Systems, React, or any course you are studying.",
+  },
+  {
+    icon: ClipboardCheck,
+    title: "Quizzes & Stats",
+    description:
+      "Test yourself with AI-generated MCQs, track your scores, and view your progress on the stats dashboard.",
   },
   {
     icon: Search,
@@ -43,35 +57,23 @@ const features = [
       "Find notes by title, topic, or content. Refine AI output to match how you learn.",
   },
   {
-    icon: ClipboardCheck,
-    title: "AI-powered quizzes",
-    description:
-      "Generate 5–8 MCQs from any note and test yourself with instant score feedback.",
-  },
-  {
     icon: LayoutDashboard,
     title: "Learning dashboard",
     description:
       "Track subjects, notes, and quizzes. See recent activity and jump back in fast.",
-  },
-  {
-    icon: Zap,
-    title: "Fast by design",
-    description:
-      "Built for speed - from topic to revision notes to self-assessment in one flow.",
   },
 ];
 
 const steps = [
   {
     step: "01",
-    title: "Create a subject",
-    description: "Set up containers for each course or certification you are preparing for.",
+    title: "Generate a roadmap",
+    description: "Enter a topic and get a structured, step-by-step learning path.",
   },
   {
     step: "02",
-    title: "Enter a topic",
-    description: "Type any concept - like Normalization, React Hooks, or Process Scheduling.",
+    title: "Create a subject",
+    description: "Set up containers for each course or certification you are preparing for.",
   },
   {
     step: "03",
@@ -80,8 +82,8 @@ const steps = [
   },
   {
     step: "04",
-    title: "Quiz yourself",
-    description: "Turn notes into MCQs, attempt the quiz, and review what you got wrong.",
+    title: "Quiz & Track",
+    description: "Turn notes into MCQs, track your scores, and view progress on your dashboard.",
   },
 ];
 
@@ -113,21 +115,19 @@ export default function LandingPage() {
 
               <div className="space-y-4">
                 <h1 className="text-4xl font-bold tracking-tight text-balance sm:text-5xl lg:text-[3.25rem] lg:leading-[1.1]">
-                  From topic to notes to quiz - in seconds
+                  From topic to roadmap to notes to quiz
                 </h1>
                 <p className="max-w-xl text-lg text-muted-foreground text-pretty">
-                  StudyNova helps students generate high-quality, structured learning
-                  material from any topic. Organize by subject, edit freely, and test
-                  yourself with AI-generated quizzes.
+                  StudyNova helps students generate learning roadmaps and structured study notes from any topic. Organize by subject, edit freely, and test yourself with AI-generated quizzes while tracking your progress.
                 </p>
               </div>
 
               <div className="flex flex-wrap items-center gap-1.5 text-sm font-medium text-muted-foreground">
                 <span className="rounded-md bg-muted px-2.5 py-1">Topic</span>
                 <ArrowRight className="size-4 shrink-0" />
-                <span className="rounded-md bg-muted px-2.5 py-1">Structured notes</span>
+                <span className="rounded-md bg-muted px-2.5 py-1">Roadmap</span>
                 <ArrowRight className="size-4 shrink-0" />
-                <span className="rounded-md bg-muted px-2.5 py-1">Self assessment</span>
+                <span className="rounded-md bg-muted px-2.5 py-1">Notes & Quizzes</span>
               </div>
 
               <div className="flex flex-col gap-3 sm:flex-row">
@@ -328,9 +328,7 @@ export default function LandingPage() {
       <footer className="border-t py-8">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 text-sm text-muted-foreground sm:flex-row sm:px-6">
           <div className="flex items-center gap-2 font-medium text-foreground">
-            <span className="flex size-7 items-center justify-center rounded-md bg-primary text-xs text-primary-foreground">
-              SN
-            </span>
+            <Image src="/logo.png" alt="StudyNova Logo" width={28} height={28} className="rounded-md" />
             StudyNova
           </div>
           <p>AI-powered study notes for students.</p>

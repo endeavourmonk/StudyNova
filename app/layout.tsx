@@ -19,6 +19,9 @@ export const metadata: Metadata = {
   title: "StudyNova - AI-powered study notes",
   description:
     "Generate structured study notes from any topic, organize by subject, and test yourself with AI-generated quizzes.",
+  icons: {
+    icon: "/logo.png",
+  },
 };
 
 export default function RootLayout({
