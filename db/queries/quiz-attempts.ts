@@ -1,4 +1,4 @@
-import { and, avg, count, desc, eq, max, sql } from "drizzle-orm";
+import { and, avg, count, desc, eq, inArray, max, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "../index";
@@ -166,7 +166,7 @@ export async function fetchBestAttemptPerQuiz(
     .where(
       and(
         eq(quizAttemptsTable.userId, userId),
-        sql`${quizAttemptsTable.quizId} = ANY(${quizIds})`,
+        inArray(quizAttemptsTable.quizId, quizIds),
       ),
     )
     .groupBy(quizAttemptsTable.quizId);
