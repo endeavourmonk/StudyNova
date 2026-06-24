@@ -37,6 +37,9 @@ Each generated note follows a consistent outline (overview, key concepts, detail
 | **AI notes**       | Pick a subject + topic → receive structured markdown notes → auto-save           |
 | **Notes**          | List by subject, full-text search (title, topic, content), edit, delete          |
 | **Quizzes**        | Generate 10 MCQs from any note; attempt, submit, and see score + answer review   |
+| **Quiz Attempts**  | Detailed logs of all quiz submissions, listing score, answers, and completion date |
+| **Stats & Analytics** | Overall dashboard statistics (average/best percentage, total attempts) and subject breakdown |
+| **AI Roadmaps**    | Generate 5-10 step structured learning paths for any topic, with CRUD operations  |
 | **Dashboard**      | Totals (subjects, notes, quizzes) and recent activity with quick actions         |
 
 See [product.md](./product.md) for full requirements, out-of-scope items, and success criteria.
@@ -65,17 +68,20 @@ All core MVP features are **built and functional**:
 
 | Feature                              | Status      |
 | ------------------------------------ | ----------- |
-| PostgreSQL schema (users, subjects, notes, quizzes) | ✅ Done |
+| PostgreSQL schema (users, subjects, notes, quizzes, attempts, roadmaps) | ✅ Done |
 | Typed query layer with pagination & search          | ✅ Done |
 | Zod validation for all entities                     | ✅ Done |
 | Clerk auth & middleware (`proxy.ts`)                | ✅ Done |
 | Landing page                                        | ✅ Done |
 | Dashboard (`/app`)                                  | ✅ Done |
+| Stats & Performance Analytics (`/app/stats`)        | ✅ Done |
 | Subject management UI                               | ✅ Done |
 | AI note generation (LLM-backed)                     | ✅ Done |
 | Note viewing, editing, deleting                     | ✅ Done |
 | AI quiz generation (10 MCQs per note)               | ✅ Done |
-| Quiz attempt + score + answer review UI             | ✅ Done |
+| Quiz attempt tracking + score + answer review UI   | ✅ Done |
+| AI roadmap generation & CRUD (`/roadmaps`)          | ✅ Done |
+| Responsive navigation & logo branding               | ✅ Done |
 
 ---
 
@@ -114,9 +120,12 @@ flowchart LR
 StudyNova/
 ├── app/                              # Next.js App Router
 │   ├── page.tsx                      # Public landing page
-│   ├── layout.tsx                    # Root layout (Clerk provider, theme)
+│   ├── layout.tsx                    # Root layout (Clerk provider, theme, logo)
 │   ├── globals.css                   # Global styles (Tailwind v4)
-│   ├── app/page.tsx                  # Dashboard (protected, /app)
+│   ├── app/
+│   │   ├── page.tsx                  # Dashboard (protected, /app)
+│   │   └── stats/
+│   │       └── page.tsx              # Stats/Analytics dashboard (/app/stats)
 │   ├── sign-in/  sign-up/            # Clerk auth pages
 │   ├── profile/                      # User profile
 │   ├── subjects/                     # Subject list + create
@@ -130,22 +139,36 @@ StudyNova/
 │   │               ├── quiz/
 │   │               │   └── [quizId]/
 │   │               │       ├── page.tsx        # Quiz page (server)
-│   │               │       └── quiz-attempt.tsx # Quiz UI (client)
+│   │               │       └── quiz-attempt.tsx # Quiz UI (client, scores attempt)
 │   │               └── generate-quiz-button.tsx
+│   ├── roadmaps/                     # AI Learning Roadmaps feature
+│   │   ├── page.tsx                  # Roadmaps list page (/roadmaps)
+│   │   ├── actions.ts                # Server Actions (create, delete)
+│   │   ├── roadmap-form.tsx          # Form component to create a roadmap
+│   │   ├── delete-roadmap-button.tsx # Delete button component
+│   │   ├── new/
+│   │   │   └── page.tsx              # Create roadmap page
+│   │   └── [roadmapId]/
+│   │       └── page.tsx              # View roadmap details
 │   ├── notes/                        # Cross-subject notes search
 │   ├── quiz/
-│   │   └── actions.ts                # generateQuizAction, deleteQuizAction
+│   │   └── actions.ts                # generateQuizAction, submitAttemptAction
 │   ├── api/                          # Route handlers (Clerk webhooks etc.)
 │   └── components/                   # Shared app-level components (Navbar, etc.)
 ├── components/ui/                    # shadcn/ui primitives
 ├── db/
 │   ├── schemas/                      # Drizzle table definitions + relations
-│   ├── schemas/validation/           # Zod schemas (notes, quizzes, users…)
-│   └── queries/                      # Data access (users, subjects, notes, quizzes)
+│   │   ├── quiz-attempts.ts          # Quiz attempts tracking schema
+│   │   └── roadmaps.ts               # Learning roadmaps schema
+│   ├── schemas/validation/           # Zod schemas (notes, quizzes, users, attempts, roadmaps)
+│   └── queries/                      # Data access
+│       ├── quiz-attempts.ts          # Analytics and attempts queries
+│       └── roadmaps.ts               # Roadmaps database access queries
 ├── drizzle/                          # SQL migrations
 ├── lib/
 │   ├── generateNote.ts               # AI note generation
 │   ├── generateQuiz.ts               # AI quiz generation (10 MCQs)
+│   ├── generateRoadmap.ts            # AI roadmap generation
 │   ├── generateUsername.ts           # Username helper
 │   └── utils.ts                      # cn() utility
 ├── scripts/seed.ts                   # Database seeder
@@ -231,12 +254,15 @@ pnpm start
 ## Data model
 
 ```text
-User ──< Subject ──< Note ──< Quiz
+User ──< Subject ──< Note ──< Quiz ──< QuizAttempt
+User ──< Roadmap
 ```
 
 - **Subject** — `name`, owned by one user; deleting a subject cascades to its notes.
 - **Note** — `title`, `topic`, `content` (markdown), tied to subject + user.
 - **Quiz** — linked to one note; `questions_json` holds 10 MCQs (question, 4 options, 0-indexed `correctAnswer`).
+- **QuizAttempt** — tracks attempts of a quiz by a user; records `score`, `totalQuestions`, `answersJson` (array of selected answers), and completion timestamp.
+- **Roadmap** — AI-generated structured learning path for a topic; stores `topic` and `stepsJson` (ordered array of steps containing order, title, and description).
 
 Detailed field-level spec and page map live in [product.md](./product.md#database-schema).
 
@@ -244,7 +270,7 @@ Detailed field-level spec and page map live in [product.md](./product.md#databas
 
 ## AI integration
 
-Both AI features use an **OpenAI-compatible client** (`openai` npm package) pointed at whatever endpoint you configure via `LLM_BASE_URL` and `LLM_MODEL`.
+All AI features use an **OpenAI-compatible client** (`openai` npm package) pointed at whatever endpoint you configure via `LLM_BASE_URL` and `LLM_MODEL`.
 
 ### Note generation (`lib/generateNote.ts`)
 
@@ -258,6 +284,12 @@ Both AI features use an **OpenAI-compatible client** (`openai` npm package) poin
 - Each question: `{ question, options: [A, B, C, D], correctAnswer: 0–3 }`.
 - Every question is individually validated with `quizQuestionSchema` (Zod).
 - If the model returns anything other than exactly 10 valid questions, an error is thrown and surfaced to the user.
+
+### Roadmap generation (`lib/generateRoadmap.ts`)
+
+- Prompt instructs the model to return JSON `{ steps: [...] }` with 5-10 ordered learning steps.
+- Each step: `{ order, title, description }` where steps are logically ordered from foundational to advanced.
+- Each step is individually validated with `roadmapStepSchema` (Zod).
 
 ---
 
